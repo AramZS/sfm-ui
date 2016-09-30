@@ -21,6 +21,14 @@ options.DEFAULT_NAMES = options.DEFAULT_NAMES + (u'diff_fields',)
 def default_uuid():
     return uuid.uuid4().hex
 
+class HistoryModel(models.Model):
+
+    class Meta:
+        abstract = True
+
+    def natural_key(self):
+        return (self.collection_set_id, self.history_date)
+
 
 class User(AbstractUser):
     DAILY = "daily"
@@ -108,7 +116,7 @@ class CollectionSet(models.Model):
     is_visible = models.BooleanField(default=True)
     date_added = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
-    history = HistoricalRecords()
+    history = HistoricalRecords(bases=[HistoryModel])
     history_note = models.TextField(blank=True)
 
     class Meta:
@@ -119,6 +127,9 @@ class CollectionSet(models.Model):
 
     def save(self, *args, **kw):
         return history_save(self, *args, **kw)
+
+    def natural_key(self):
+        return (self.collection_set_id,)
 
     def stats(self):
         """
