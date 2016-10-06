@@ -21,6 +21,7 @@ import forms
 from .models import CollectionSet, Collection, Seed, Credential, Harvest, Export, User
 from .sched import next_run_time
 from .utils import diff_object_history, clean_token, clean_blogname
+from .monitoring import monitor_harvests, monitor_queues, monitor_exports
 
 import os
 import logging
@@ -671,3 +672,14 @@ class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse("user_profile_detail")
+
+
+class MonitorView(TemplateView):
+    template_name = "ui/monitor.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(MonitorView, self).get_context_data(**kwargs)
+        context['harvests'] = monitor_harvests()
+        context['exports'] = monitor_exports()
+        context["harvester_queues"], context["exporter_queues"] = monitor_queues()
+        return context
