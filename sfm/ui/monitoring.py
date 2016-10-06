@@ -32,9 +32,6 @@ def monitor_queues():
 
 
 class QueueAPI(AdminAPI):
-    # TODO: Add testing in sfm-utils for harvester and exporter
-    # TODO: Add testing in sfm_ui_consumer
-    # TODO: Add RABBITMQ_MANAGEMENT_PORT to ui service in docker-compose.yml
     def list_queues(self):
         harvester_queues = {}
         exporter_queues = {}
