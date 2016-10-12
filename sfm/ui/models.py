@@ -27,7 +27,7 @@ class HistoryModel(models.Model):
         abstract = True
 
     def natural_key(self):
-        return (self.collection_set_id, self.history_date)
+        return self.collection_set_id, self.history_date
 
 
 class User(AbstractUser):

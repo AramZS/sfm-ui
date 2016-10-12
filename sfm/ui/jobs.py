@@ -3,6 +3,8 @@ import logging
 
 from .rabbit import RabbitWorker
 from .models import Collection, Harvest, default_uuid
+from .utils import collection_path
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.db import transaction
@@ -51,7 +53,7 @@ def collection_harvest(collection_pk):
     # Collection set
     collection_set = historical_collection.collection_set
     message["collection_set"]["id"] = collection_set.collection_set_id
-    message["path"] = "{}/collection_set/{}/{}".format(settings.SFM_DATA_DIR, collection_set.collection_set_id, collection.collection_id)
+    message["path"] = collection_path(collection)
 
     # Credential
     message["credentials"] = json.loads(str(historical_credential.token))
