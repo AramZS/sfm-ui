@@ -2,6 +2,7 @@ import logging
 import datetime
 from collections import OrderedDict
 from smtplib import SMTPException
+from subprocess import check_output, CalledProcessError
 
 from django.template.loader import get_template
 from django.template import Context
@@ -11,11 +12,67 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 
-
 from .models import User, CollectionSet, Collection, HarvestStat
 from .sched import next_run_time
 
 log = logging.getLogger(__name__)
+
+
+def send_free_space_emails(superusers=None):
+    log.info("Sending free space emails")
+    space_msg_cache = {}
+    if superusers is None:
+        superusers = User.objects.filter(is_superuser=True)
+    for user in superusers:
+        if _should_send_space_email(user, space_msg_cache):
+            msg = _create_space_email(user, space_msg_cache)
+            try:
+                log.debug("Sending email to %s: %s", msg.to, msg.subject)
+                msg.send()
+            except SMTPException, ex:
+                log.error("Error sending email: %s", ex)
+        else:
+            log.debug("Not sending email to %s", user.username)
+
+
+def _should_send_space_email(user, space_msg_cache):
+    send_email = False
+    cmd = "df -h -BM|grep -w '/sfm-data'"
+    total_free_space = -1
+    total_space = -1
+    try:
+        res = check_output(cmd, shell=True)
+        split_lines = res.split('\n')
+        for line in split_lines:
+            line_units = filter(None, line.split(' '))
+            # the sfm-data and sfm-processing mount at sfm-data,
+            # we only need to count the sfm-data
+            if line_units:
+                # get rid of the unit at the space,12M
+                # eg:['/dev/sda1', '208074M', '47203M', '150279M', '24%', '/sfm-data']
+                total_free_space = int(line_units[3][:-1])
+                total_space = int(line_units[1][:-1])
+        space_msg_cache['total_space'] = total_space
+        space_msg_cache['total_free_space'] = total_free_space
+        space_msg_cache['percentage'] = ((total_space-total_free_space)/total_space)*100
+        log.debug("Running %s completed.", cmd)
+    except CalledProcessError, e:
+        log.error("%s returned %s: %s", cmd, e.returncode, e.output)
+    log.debug("total space %s, user.email:%s", total_free_space, user.email)
+    if user.email and total_free_space != -1 and total_free_space > int(settings.FREE_SPACE_THRESHOLD):
+        send_email = True
+    return send_email
+
+
+def _create_space_email(user, space_msg_cache):
+    text_template = get_template('email/free_space_email.txt')
+    html_template = get_template('email/free_space_email.html')
+    space_msg_cache["url"] = _create_url(reverse('home'))
+    d = Context(space_msg_cache)
+    msg = EmailMultiAlternatives("Warning of free space running Social Feed Manager", text_template.render(d),
+                                 settings.EMAIL_HOST_USER, [user.email])
+    msg.attach_alternative(html_template.render(d), "text/html")
+    return msg
 
 
 def send_user_harvest_emails(users=None):
