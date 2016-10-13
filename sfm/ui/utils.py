@@ -85,10 +85,11 @@ def clean_blogname(blogname):
     return stripped_blogname[:-11] if stripped_blogname.endswith('.tumblr.com') else stripped_blogname
 
 
-def collection_path(collection, sfm_data_dir=settings.SFM_DATA_DIR):
-    return os.path.join(sfm_data_dir, "collection_set", collection.collection_set.collection_set_id,
+def collection_path(collection, sfm_data_dir=None):
+    return os.path.join(sfm_data_dir or settings.SFM_DATA_DIR, "collection_set",
+                        collection.collection_set.collection_set_id,
                         collection.collection_id)
 
 
-def collection_set_path(collection_set, sfm_data_dir=settings.SFM_DATA_DIR):
-    return os.path.join(sfm_data_dir, "collection_set", collection_set.collection_set_id)
+def collection_set_path(collection_set, sfm_data_dir=None):
+    return os.path.join(sfm_data_dir or settings.SFM_DATA_DIR, "collection_set", collection_set.collection_set_id)
