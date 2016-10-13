@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
 from simple_history.models import HistoricalRecords
-from simple_history.manager import HistoryManager
+
 import django.db.models.options as options
 from django.conf import settings
 
@@ -71,6 +71,7 @@ class CredentialManager(models.Manager):
     def get_by_natural_key(self, credential_id):
         return self.get(credential_id=credential_id)
 
+
 class CredentialHistoryManager(models.Manager):
     def get_by_natural_key(self, credential_id, history_date):
         return self.get(credential_id=credential_id, history_date=history_date)
@@ -78,6 +79,7 @@ class CredentialHistoryManager(models.Manager):
 
 class CredentialHistoryModel(models.Model):
     objects = CredentialHistoryManager()
+
     class Meta:
         abstract = True
 
@@ -116,7 +118,7 @@ class Credential(models.Model):
         return '<Credential %s "%s">' % (self.id, self.platform)
 
     def natural_key(self):
-        return (self.credential_id,)
+        return self.credential_id,
 
     def save(self, *args, **kw):
         return history_save(self, *args, **kw)
@@ -161,7 +163,7 @@ class CollectionSet(models.Model):
         return history_save(self, *args, **kw)
 
     def natural_key(self):
-        return (self.collection_set_id,)
+        return self.collection_set_id,
 
     def stats(self):
         """
@@ -231,13 +233,16 @@ class CollectionSet(models.Model):
         return Harvest.objects.filter(collection__collection_set=self).aggregate(total=models.Sum("warcs_bytes"))[
             "total"]
 
+
 class CollectionManager(models.Manager):
     def get_by_natural_key(self, collection_id):
         return self.get(collection_id=collection_id)
 
+
 class CollectionHistoryManager(models.Manager):
     def get_by_natural_key(self, collection_id, history_date):
         return self.get(collection_id=collection_id, history_date=history_date)
+
 
 class CollectionHistoryModel(models.Model):
     objects = CollectionHistoryManager()
@@ -321,7 +326,7 @@ class Collection(models.Model):
         return '<Collection %s "%s">' % (self.id, self.name)
 
     def natural_key(self):
-        return (self.collection_id,)
+        return self.collection_id,
 
     def required_seed_count(self):
         """
@@ -419,7 +424,7 @@ class Seed(models.Model):
         return history_save(self, *args, **kw)
 
     def natural_key(self):
-        return (self.seed_id,)
+        return self.seed_id,
 
     def label(self):
         labels = []
@@ -479,7 +484,7 @@ class Harvest(models.Model):
         return '<Harvest %s "%s">' % (self.id, self.harvest_id)
 
     def natural_key(self):
-        return (self.harvest_id,)
+        return self.harvest_id,
 
     def get_harvest_type_display(self):
         return self.harvest_type.replace("_", " ").capitalize()
@@ -513,14 +518,16 @@ class HarvestStat(models.Model):
         unique_together = ("harvest", "harvest_date", "item")
 
     def natural_key(self):
-        return (self.harvest, self.harvest_date, self.item,)
+        return self.harvest, self.harvest_date, self.item,
 
     def __str__(self):
         return '<HarvestStat %s "%s from %s">' % (self.id, self.item, self.harvest_date)
 
+
 class WarcManager(models.Manager):
     def get_by_natural_key(self, warc_id):
         return self.get(warc_id=warc_id)
+
 
 class Warc(models.Model):
     harvest = models.ForeignKey(Harvest, related_name='warcs')
@@ -539,7 +546,7 @@ class Warc(models.Model):
         return self.harvest.harvest_type
 
     def natural_key(self):
-        return (self.warc_id,)
+        return self.warc_id,
 
 
 class Export(models.Model):

@@ -3,13 +3,10 @@ from .models import Collection, CollectionSet, Seed, Credential, Group, User, Ha
 from .utils import collection_path as get_collection_path
 from .utils import collection_set_path as get_collection_set_path
 import serialize
-from django.core import serializers
-import json
 import tempfile
 import os
 import shutil
 from datetime import date, datetime
-import re
 
 
 class SerializeTests(TestCase):
@@ -28,20 +25,20 @@ class SerializeTests(TestCase):
         self.collection_set.save()
 
         self.user1 = User.objects.create_superuser(username="test_user1", email="test_user@test.com",
-                                             password="test_password")
+                                                   password="test_password")
         self.user2 = User.objects.create_superuser(username="test_user2", email="test_user@test.com",
-                                             password="test_password")
+                                                   password="test_password")
         credential1 = Credential.objects.create(user=self.user1, platform="test_platform",
-                                                    token='{"key":"key1"}')
+                                                token='{"key":"key1"}')
         self.credential2 = Credential.objects.create(user=self.user2, platform="test_platform",
-                                                    token='{"key":"key2"}')
+                                                     token='{"key":"key2"}')
         # Now change credential2
         self.credential2.token = '{"key":"key1.1"}'
         self.credential2.save()
         self.collection1 = Collection.objects.create(collection_set=self.collection_set,
-                                                name="test_collection",
-                                                harvest_type=Collection.TWITTER_USER_TIMELINE,
-                                                credential=credential1)
+                                                     name="test_collection",
+                                                     harvest_type=Collection.TWITTER_USER_TIMELINE,
+                                                     credential=credential1)
         # Now change to credential2
         self.collection1.credential = self.credential2
         self.collection1.save()
@@ -59,8 +56,8 @@ class SerializeTests(TestCase):
         historical_collection = self.collection1.history.all()[0]
         historical_credential = historical_collection.credential.history.all()[0]
         self.harvest1 = Harvest.objects.create(collection=self.collection1,
-                                          historical_collection=historical_collection,
-                                          historical_credential=historical_credential)
+                                               historical_collection=historical_collection,
+                                               historical_credential=historical_credential)
 
         # Harvest stats
         day1 = date(2016, 5, 20)
@@ -70,26 +67,15 @@ class SerializeTests(TestCase):
         HarvestStat.objects.create(harvest=self.harvest1, item="tweets", count=7, harvest_date=day2)
 
         # Warcs
-        Warc.objects.create(harvest=self.harvest1, warc_id=default_uuid(), path="/data/warc1.warc.gz", sha1="warc1sha", bytes=10, date_created=datetime.utcnow())
-        Warc.objects.create(harvest=self.harvest1, warc_id=default_uuid(), path="/data/warc2.warc.gz", sha1="warc2sha", bytes=11,
+        Warc.objects.create(harvest=self.harvest1, warc_id=default_uuid(), path="/data/warc1.warc.gz", sha1="warc1sha",
+                            bytes=10, date_created=datetime.utcnow())
+        Warc.objects.create(harvest=self.harvest1, warc_id=default_uuid(), path="/data/warc2.warc.gz", sha1="warc2sha",
+                            bytes=11,
                             date_created=datetime.utcnow())
 
     def tearDown(self):
         if os.path.exists(self.data_dir):
             shutil.rmtree(self.data_dir)
-    #
-    # def test_filename(self):
-    #     # Model object without last_updated
-    #     self.assertRegexpMatches(RecordSerializer._filename(self.group), "Group-test_group.json")
-    #     # Model object with uuid
-    #     self.assertEqual("CollectionSet-{}.json".format(self.collection_set.collection_set_id),
-    #                      RecordSerializer._filename(self.collection_set))
-    #     # Model object with other object as natural keys
-    #     historical_collection_set = self.collection_set.history.all()[0]
-    #     self.assertEqual("HistoricalCollectionSet-{}-{}.json".format(historical_collection_set.collection_set_id,
-    #                                                                  RecordSerializer._date_format(
-    #                                                                      historical_collection_set.history_date)),
-    #                      RecordSerializer._filename(historical_collection_set))
 
     def test_serialize(self):
         serializer = serialize.RecordSerializer(data_dir=self.data_dir)
@@ -181,7 +167,6 @@ class SerializeTests(TestCase):
         self.assertEqual(1, Credential.objects.count())
 
         # Now deserialize again
-        # deserializer = RecordDeserializer(serializer.collection_set_path)
         deserializer.deserialize_collection_set(self.collection_set_path)
 
         # And check the deserialization
@@ -199,43 +184,3 @@ class SerializeTests(TestCase):
         self.assertEqual(1, Harvest.objects.count())
         self.assertEqual(3, HarvestStat.objects.count())
         self.assertEqual(2, Warc.objects.count())
-
-#     def test_serialize_collection_set(self):
-#
-#         data = serializers.serialize("json", [self.collection_set, ], indent=4, use_natural_foreign_keys=True,
-#                                      use_natural_primary_keys=True)
-#         # print json.dumps(data, indent=4)
-#         print data
-#
-#     def test_deserialize_collection_set(self):
-#         collection_set_str = """
-# [
-# {
-#     "fields": {
-#         "is_visible": true,
-#         "group": [
-#             "test_group"
-#         ],
-#         "name": "test_collection_set",
-#         "date_updated": "2016-09-29T20:49:44.931Z",
-#         "history_note": "",
-#         "date_added": "2016-09-29T20:49:44.931Z",
-#         "collection_set_id": "f31cc5bd10f24c26bef021fd9a5d8ea9",
-#         "description": "This is a test collection."
-#     },
-#     "model": "ui.collectionset"
-# }
-# ]
-#         """
-#
-#         list(serializers.deserialize("json", collection_set_str))[0].save()
-#         collection_set = CollectionSet.objects.get(collection_set_id="f31cc5bd10f24c26bef021fd9a5d8ea9")
-#         self.assertTrue(collection_set.is_visible)
-#         self.assertEqual("This is a test collection.", collection_set.description)
-#         self.assertEqual(self.group1, collection_set.group)
-#
-#     def test_serialize_collection_set_history(self):
-#         data = serializers.serialize("json", self.collection_set.history.all(), indent=4, use_natural_foreign_keys=True,
-#                                      use_natural_primary_keys=True)
-#         # print json.dumps(data, indent=4)
-#         print data

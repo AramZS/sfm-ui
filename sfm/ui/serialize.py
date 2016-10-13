@@ -1,4 +1,3 @@
-import datetime
 import os
 import shutil
 import codecs
@@ -7,7 +6,6 @@ import json
 
 from django.core import serializers
 
-from sfmutils.utils import safe_string
 from .utils import collection_path as get_collection_path
 from .models import Group, CollectionSet, Collection, User, Credential
 
@@ -83,7 +81,7 @@ class RecordSerializer:
 
     def _serialize_groups(self, collection_set, records_path):
         # Groups (current group and all groups in historical collection sets)
-        groups = {collection_set.group,}
+        groups = {collection_set.group, }
         for historical_collection_set in collection_set.history.all():
             groups.add(historical_collection_set.group)
         group_record_filepath = os.path.join(records_path, GROUP_FILENAME)
@@ -174,10 +172,11 @@ class RecordSerializer:
             shutil.rmtree(records_path)
         os.makedirs(records_path)
 
-    def _serialize_objs(self, objs, filepath):
+    @staticmethod
+    def _serialize_objs(objs, filepath):
         with codecs.open(filepath, "w") as f:
             serializers.serialize("json", objs, indent=4, use_natural_foreign_keys=True,
-                                     use_natural_primary_keys=True, stream=f)
+                                  use_natural_primary_keys=True, stream=f)
         assert os.path.exists(filepath)
 
 
@@ -247,8 +246,6 @@ class RecordDeserializer:
 
         warcs_filepath = os.path.join(records_path, WARC_FILENAME)
         self._check_exists(warcs_filepath)
-
-        print json.dumps(self._load_record(harvest_filepath), indent=4)
 
         # Only proceed with deserialization if collection doesn't already exist
         collection_id = self._load_record(collection_record_filepath)[0]["fields"]["collection_id"]
@@ -322,9 +319,6 @@ class RecordDeserializer:
 
     def _deserialize_credentials(self, credentials_record_filepath, historical_credentials_record_filepath):
         log.debug("Deserializing credentials")
-        print len(Credential.objects.all())
-        for c in Credential.objects.all():
-            print c.credential_id
         credential_ids = []
         for d_credential in self._deserialize_iter(credentials_record_filepath):
             if not Credential.objects.filter(credential_id=d_credential.object.credential_id).exists():
@@ -336,35 +330,15 @@ class RecordDeserializer:
 
         for d_historical_credential in self._deserialize_iter(historical_credentials_record_filepath):
             if d_historical_credential.object.instance.credential_id in credential_ids:
-                log.debug("Saving historical credential %s (%s)", d_historical_credential.object.instance.credential_id, d_historical_credential.object.history_date)
+                log.debug("Saving historical credential %s (%s)", d_historical_credential.object.instance.credential_id,
+                          d_historical_credential.object.history_date)
                 d_historical_credential.save()
 
-    def _load_record(self, record_filepath):
+    @staticmethod
+    def _load_record(record_filepath):
         with codecs.open(record_filepath, "r") as f:
             record = json.load(f)
         return record
-
-    # def deserialize(self):
-    #     # Groups
-    #     self.deserialize_groups()
-    #
-    #     deserialized_collection_set = self._load_collection_set()
-    #     # If collection set exists, deserialize nothing else
-    #     if not CollectionSet.objects.filter(collection_set_id=deserialized_collection_set.object.collection_set_id).exists():
-    #         log.debug("Collection set does not exist, so proceeding with deserialization")
-    #
-    #         # Save the collection set
-    #         deserialized_collection_set.save()
-    #
-    #         # Historical collection sets
-    #         self._deserialize(self.historical_collections_set_record_filepath)
-    #
-    #     else:
-    #         log.warning("Not loading from %s since collection set already exists", self.collection_set_path)
-    #
-    # def _load_collection_set(self):
-    #     return self._deserialize_iter(self.collections_set_record_filepath).next()
-    #
 
     def _deserialize_item(self, record_filepath):
         return self._deserialize_iter(record_filepath).next()
